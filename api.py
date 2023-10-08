@@ -2,14 +2,14 @@ from fastapi import FastAPI, UploadFile, HTTPException
 import pandas as pd
 import torch
 from sklearn.preprocessing import StandardScaler
-from inference import run_inference
 import json
 import io
+from transformers import BartTokenizer
 from model_loader import get_model
 
 app = FastAPI()
 
-# tokenizer = BartTokenizer.from_pretrained('facebook/bart-large')
+tokenizer = BartTokenizer.from_pretrained('facebook/bart-large')
 
 # First, let's modify the preprocess_eeg_data function to also create the necessary masks.
 
@@ -69,32 +69,15 @@ def preprocess_eeg_data_with_masks(raw_eeg_data: pd.DataFrame) -> (torch.Tensor,
     return eeg_tensor, input_masks, input_masks_invert
 
 def run_inference_with_masks(eeg_tensor: torch.Tensor, input_masks: torch.Tensor, input_masks_invert: torch.Tensor) -> str:
-    """
-    Run the inference with masks and return predictions.
-    
-    Parameters:
-    - eeg_tensor (torch.Tensor): The preprocessed EEG data in tensor format.
-    - input_masks (torch.Tensor): Input masks for the EEG data.
-    - input_masks_invert (torch.Tensor): Inverted input masks for the EEG data.
-    
-    Returns:
-    - str: The predicted text in JSON format.
-    """
     model = get_model()
     
-    # Perform inference
     with torch.no_grad():
         outputs = model(eeg_tensor, input_masks, input_masks_invert)
     
-    # Assuming the 'logits' or 'sequences' in the outputs is what we need
-    # Here, I'm just taking a placeholder as we don't have the exact key
-    predicted_sequences = outputs.get("placeholder_key", [])
+    # Assuming the output of the model is token IDs
+    decoded_texts = [tokenizer.decode(output, skip_special_tokens=True) for output in outputs]
     
-    # Convert the sequences to actual text (this step might need further clarification)
-    texts = [seq for seq in predicted_sequences]
-    
-    # Convert to JSON format
-    results_json = json.dumps(texts)
+    results_json = json.dumps(decoded_texts)
     return results_json
 
 # Also, modify the API's predict endpoint to handle the masks
@@ -123,6 +106,10 @@ async def predict_with_masks(file: UploadFile = UploadFile(...)):
 
         return {"predictions": results_json}
 
+    except ValueError as ve:
+        raise HTTPException(status_code=500, detail=f"ValueError: {str(ve)}")
+    except TypeError as te:
+        raise HTTPException(status_code=500, detail=f"TypeError: {str(te)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
