@@ -26,13 +26,14 @@ def preprocess_eeg_data(raw_eeg_data: pd.DataFrame) -> torch.Tensor:
     """
     # Handle missing values
     eeg_data_filled = raw_eeg_data.fillna(raw_eeg_data.mean())
-
+    print("eeg_data_filled")
     # Segment the data
     segment_length = 128
     num_segments = len(eeg_data_filled) // segment_length
     segments = []
-
+    print("does it get here? Segments:",num_segments)
     for i in range(num_segments):
+        print("try here",i)
         segment = eeg_data_filled.iloc[i*segment_length:(i+1)*segment_length].values
         segments.append(segment)
 
@@ -70,12 +71,26 @@ def preprocess_eeg_data_with_masks(raw_eeg_data: pd.DataFrame) -> (torch.Tensor,
 
 def run_inference_with_masks(eeg_tensor: torch.Tensor, input_masks: torch.Tensor, input_masks_invert: torch.Tensor) -> str:
     model = get_model()
-    
+    # Perform inference
     with torch.no_grad():
         outputs = model(eeg_tensor, input_masks, input_masks_invert)
-    
-    # Assuming the output of the model is token IDs
-    decoded_texts = [tokenizer.decode(output, skip_special_tokens=True) for output in outputs]
+    print(type(outputs))
+    if isinstance(outputs, tuple):
+        print([type(item) for item in outputs])
+        print([item.shape for item in outputs])
+
+
+    # Validate and extract the logits from the outputs
+    if isinstance(outputs, tuple) and len(outputs) > 0:
+        logits = outputs[0]
+    else:
+        raise ValueError("Model output is not in the expected format.")
+
+    # Convert logits to token IDs
+    predicted_token_ids = torch.argmax(logits, dim=-1)
+
+    # Decode the token IDs
+    decoded_texts = [tokenizer.decode(token_ids, skip_special_tokens=True) for token_ids in predicted_token_ids]
     
     results_json = json.dumps(decoded_texts)
     return results_json
