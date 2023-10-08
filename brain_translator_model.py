@@ -11,8 +11,11 @@ class BrainTranslator(nn.Module):
         self.additional_encoder = nn.TransformerEncoder(self.additional_encoder_layer, num_layers=6)
         self.fc1 = nn.Linear(in_feature, decoder_embedding_size)
 
-    def forward(self, input_embeddings_batch, input_masks_batch, input_masks_invert, target_ids_batch_converted):
+    def forward(self, input_embeddings_batch, input_masks_batch, input_masks_invert):
         encoded_embedding = self.additional_encoder(input_embeddings_batch, src_key_padding_mask=input_masks_invert)
         encoded_embedding = F.relu(self.fc1(encoded_embedding))
-        out = self.pretrained(inputs_embeds=encoded_embedding, attention_mask=input_masks_batch, return_dict=True, labels=target_ids_batch_converted)
+        
+        # Note: During inference, we don't provide labels. So, it will return logits.
+        out = self.pretrained(inputs_embeds=encoded_embedding, attention_mask=input_masks_batch, return_dict=True)
+        
         return out

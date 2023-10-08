@@ -1,38 +1,66 @@
 from fastapi import FastAPI, UploadFile, HTTPException
 import pandas as pd
-from typing import Union
-from inference import main
+import torch
+from sklearn.preprocessing import StandardScaler
+from inference import run_inference
+
+import io
+
 
 app = FastAPI()
 
-@app.post("/predict/")
-async def predict(file: UploadFile = UploadFile(...)) -> Union[dict, HTTPException]:
+def preprocess_eeg_data(raw_eeg_data: pd.DataFrame) -> torch.Tensor:
     """
-    Endpoint to predict text from EEG data.
-    
-    Parameters:
-    - file (UploadFile): The uploaded EEG data file.
-    
+    Preprocess raw EEG data: handle missing values, segment, and normalize.
+
+    Args:
+    - raw_eeg_data (pd.DataFrame): Raw EEG data.
+
     Returns:
-    - dict: Predicted text or error message.
+    - torch.Tensor: Preprocessed EEG data in tensor format.
     """
+    # Handle missing values
+    eeg_data_filled = raw_eeg_data.fillna(raw_eeg_data.mean())
+
+    # Segment the data
+    segment_length = 128
+    num_segments = len(eeg_data_filled) // segment_length
+    segments = []
+
+    for i in range(num_segments):
+        segment = eeg_data_filled.iloc[i*segment_length:(i+1)*segment_length].values
+        segments.append(segment)
+
+    # Normalize each segment
+    scaler = StandardScaler()
+    normalized_segments = [scaler.fit_transform(segment) for segment in segments]
+
+    # Convert to tensor format
+    tensor_data = torch.tensor(normalized_segments, dtype=torch.float32)
+    
+    return tensor_data
+
+@app.post("/predict/")
+async def predict(file: UploadFile = UploadFile(...)):
     try:
         # Read the uploaded EEG data file
         content = await file.read()
+           # Convert the string content into a file-like object
+        data_stream = io.StringIO(content.decode("utf-8"))
 
-        # Determine the file format based on the filename extension and process accordingly
-        filename = file.filename
-        if filename.endswith(".csv"):
-            raw_eeg_data = pd.read_csv(content.decode("utf-8"))
-            results_json = main(raw_eeg_data)
-            return {"predictions": results_json}
-        elif filename.endswith(".json"):
-            return {"error": "JSON file format is not supported yet."}
-        else:
-            return {"error": "This file format is not supported yet."}
+        raw_eeg_data = pd.read_csv(data_stream)
+
+        # Preprocess the EEG data
+        eeg_tensor = preprocess_eeg_data(raw_eeg_data)
+
+        # Get predictions using the run_inference function
+        results_json = run_inference(eeg_tensor)
+
+        return {"predictions": results_json}
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+   
