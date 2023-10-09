@@ -29,7 +29,7 @@ def get_model():
         pretrained_bart = BartForConditionalGeneration.from_pretrained('facebook/bart-large')
 
         # Use the correct path to your model weights
-        checkpoint_path = './task1_task2_taskNRv2_finetune_BrainTranslator_skipstep1_b1_20_30_5e-05_5e-07_unique_sent.pth'
+        checkpoint_path = '/Users/michaelholborn/Documents/SoftwareLocal/monotropism/thoughtx/task1_task2_taskNRv2_finetune_BrainTranslator_skipstep1_b1_20_30_5e-05_5e-07_unique_sent.pt'
 
         # Initialize BrainTranslator with the pretrained BART layers
 
