@@ -21,7 +21,8 @@ def preprocess_eeg_data(raw_eeg_data: pd.DataFrame) -> torch.Tensor:
     segment_length = 128
     num_segments = len(eeg_data_filled) // segment_length
     segments = []
-
+    if segments == 0:
+        raise ValueError("The EEG data is too short to be segmented.")
     for i in range(num_segments):
         segment = eeg_data_filled.iloc[i*segment_length:(i+1)*segment_length].values
         segments.append(segment)
