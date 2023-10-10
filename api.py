@@ -6,7 +6,7 @@ import io
 from transformers import BartTokenizer
 from model_loader import get_model
 
-from preprocessing import preprocess_eeg_data_with_masks
+from preprocessing import preprocess_eeg_data_for_inference,generate_text_from_eeg
 
 app = FastAPI()
 
@@ -45,10 +45,10 @@ async def predict_with_masks(file: UploadFile = UploadFile(...)):
             raise HTTPException(status_code=400, detail="Unsupported file format. Only CSV and JSON are accepted.")
 
         # Preprocess the EEG data and get masks
-        eeg_tensor, input_masks, input_masks_invert = preprocess_eeg_data_with_masks(raw_eeg_data)
-
+        eeg_tensor = preprocess_eeg_data_for_inference(raw_eeg_data)
+        model =get_model()
         # Get predictions using the run_inference_with_masks function
-        results_json = run_inference_with_masks(eeg_tensor, input_masks, input_masks_invert)
+        results_json = generate_text_from_eeg(eeg_tensor,model,tokenizer)
 
         return {"predictions": results_json}
 

@@ -1,60 +1,118 @@
 import pandas as pd
-
 import torch
 from sklearn.preprocessing import StandardScaler
 
+import numpy as np
 
-def preprocess_eeg_data(raw_eeg_data: pd.DataFrame) -> torch.Tensor:
+def preprocess_eeg_data_for_inference(raw_eeg_data: np.ndarray, segment: bool = False, segment_length: int = 128) -> np.ndarray:
     """
-    Preprocess raw EEG data: handle missing values, segment, and normalize.
-
-    Args:
-    - raw_eeg_data (pd.DataFrame): Raw EEG data.
-
+    Preprocess raw EEG data for inference.
+    
+    Parameters:
+    - raw_eeg_data: The raw EEG data.
+    - segment: Whether to segment the data or not.
+    - segment_length: The length of each segment if segmentation is chosen.
+    
     Returns:
-    - torch.Tensor: Preprocessed EEG data in tensor format.
+    - Preprocessed EEG data.
     """
+    # Convert raw data to DataFrame for easier operations
+    eeg_data_df = pd.DataFrame(raw_eeg_data)
+    
     # Handle missing values
-    eeg_data_filled = raw_eeg_data.fillna(raw_eeg_data.mean())
-
-    # Segment the data
-    segment_length = 128
-    num_segments = len(eeg_data_filled) // segment_length
-    segments = []
-    if num_segments == 0:
-        raise ValueError("The EEG data is too short to be segmented.")
-    for i in range(num_segments):
-        segment = eeg_data_filled.iloc[i*segment_length:(i+1)*segment_length].values
-        segments.append(segment)
-
-    # Normalize each segment
+    eeg_data_filled = eeg_data_df.fillna(eeg_data_df.mean())
+    
+    # Normalize the data
     scaler = StandardScaler()
-    normalized_segments = [scaler.fit_transform(segment) for segment in segments]
-
-    # Convert to tensor format
-    tensor_data = torch.tensor(normalized_segments, dtype=torch.float32)
+    normalized_data = scaler.fit_transform(eeg_data_filled)
     
-    return tensor_data
+    # Segment the data if chosen
+    if segment:
+        segmented_data = segment_eeg_data(normalized_data, segment_length)
+        return segmented_data
+    
+    return normalized_data
 
-def preprocess_eeg_data_with_masks(raw_eeg_data: pd.DataFrame) -> (torch.Tensor, torch.Tensor, torch.Tensor):
+def prepare_input_sample_for_inference(eeg_data: np.ndarray, tokenizer, max_len: int = 56) -> dict:
     """
-    Preprocess raw EEG data: handle missing values, segment, and normalize.
-    Also create masks for the data.
-
-    Args:
-    - raw_eeg_data (pd.DataFrame): Raw EEG data.
-
+    Prepare an input sample suitable for the EEG-to-text model.
+    
+    Parameters:
+    - eeg_data: The preprocessed EEG data.
+    - tokenizer: The BART tokenizer.
+    - max_len: The maximum length for tokenization.
+    
     Returns:
-    - torch.Tensor: Preprocessed EEG data in tensor format.
-    - torch.Tensor: Input masks.
-    - torch.Tensor: Inverted input masks.
+    - A dictionary containing the prepared sample.
     """
-    # Preprocess the EEG data as before
-    eeg_tensor = preprocess_eeg_data(raw_eeg_data)
+    # Tokenize a placeholder text ("<s>") as a seed to generate the subsequent tokens (text)
+    target_ids = tokenizer.encode("<s>", return_tensors="pt", max_length=max_len, pad_to_max_length=True)
     
-    # Create masks for the data
-    # Assuming non-zero values are valid and zero values are padding
-    input_masks = (eeg_tensor != 0).float()
-    input_masks_invert = (eeg_tensor == 0).float()
+    # Preparing the sample dictionary
+    input_sample = {
+        "target_ids": target_ids,
+        "sent_level_EEG": torch.tensor(eeg_data, dtype=torch.float32)  # Converting the preprocessed EEG data to a torch tensor
+    }
+
+    return input_sample
+
+def generate_text_from_eeg(input_sample: dict, model, tokenizer, device="cpu") -> str:
+    """
+    Generate text from preprocessed EEG data using a trained model.
     
-    return eeg_tensor, input_masks, input_masks_invert
+    Parameters:
+    - input_sample: The prepared input sample.
+    - model: The trained EEG-to-text model.
+    - tokenizer: The BART tokenizer.
+    - device: The device to run the model on (e.g., "cpu", "cuda").
+    
+    Returns:
+    - Generated text.
+    """
+    
+    # Move the sample and model to the specified device
+    input_sample["sent_level_EEG"] = input_sample["sent_level_EEG"].to(device)
+    input_sample["target_ids"] = input_sample["target_ids"].to(device)
+    model = model.to(device)
+    
+    # Set the model to evaluation mode
+    model.eval()
+    
+    # Perform inference
+    with torch.no_grad():
+        outputs = model(input_ids=None, encoder_outputs=(input_sample["sent_level_EEG"], None), decoder_input_ids=input_sample["target_ids"])
+    
+    # Extract the generated token IDs from the model's outputs
+    generated_ids = outputs.logits.argmax(dim=-1)
+    
+    # Decode the token IDs to text
+    generated_text = tokenizer.decode(generated_ids[0], skip_special_tokens=True)
+    
+    return generated_text
+
+
+def segment_eeg_data(eeg_data: np.ndarray, segment_length: int = 128) -> np.ndarray:
+    """
+    Segment the EEG data into chunks of specified length.
+    
+    Parameters:
+    - eeg_data: The preprocessed EEG data.
+    - segment_length: The length of each segment.
+    
+    Returns:
+    - Segmented EEG data.
+    """
+    # Calculate the number of segments based on the provided segment length
+    num_segments = eeg_data.shape[1] // segment_length
+    
+    # List to store segmented chunks
+    segmented_data = []
+
+    # Loop through and create segments
+    for i in range(num_segments):
+        start_idx = i * segment_length
+        end_idx = (i + 1) * segment_length
+        segment = eeg_data[:, start_idx:end_idx]
+        segmented_data.append(segment)
+
+    return np.array(segmented_data)
