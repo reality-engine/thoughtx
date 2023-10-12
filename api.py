@@ -23,7 +23,8 @@ def load_embeddings_from_file(filepath: str) -> torch.Tensor:
     """
     with open(filepath, 'r') as file:
         embeddings_data = json.load(file)
-    return torch.tensor(embeddings_data)
+        print("embeddings_data",embeddings_data.shape)
+    return embeddings_data
 
 # First, let's modify the preprocess_eeg_data function to also create the necessary masks.
 
@@ -43,6 +44,18 @@ def generate_masks_from_embeddings(embeddings: torch.Tensor) -> (torch.Tensor, t
     return attn_mask, attn_mask_invert
 
 # Also, modify the API's predict endpoint to handle the masks
+def load_embeddings_from_content(content: str) -> torch.Tensor:
+    """
+    Load embeddings from a given string content.
+
+    Parameters:
+    - content (str): The string content containing embeddings in JSON format.
+
+    Returns:
+    - torch.Tensor: A tensor containing the loaded embeddings.
+    """
+    embeddings_data = json.loads(content)
+    return torch.tensor(embeddings_data)
 
 @app.post("/predict/")
 async def predict_with_masks(file: UploadFile = UploadFile(...)):
@@ -50,25 +63,31 @@ async def predict_with_masks(file: UploadFile = UploadFile(...)):
         # Read the uploaded EEG data file (same as before)
         content = await file.read()
 
-        # Check the format of the uploaded file (same as before)
+        # Check the format of the uploaded file
         if file.filename.endswith('.json'):
-            input_embeddings_data = load_embeddings_from_file(content.decode("utf-8"))
+            input_embeddings_data = load_embeddings_from_content(content.decode("utf-8"))
         else:
-            raise HTTPException(status_code=400, detail="Unsupported file format. Only CSV and JSON are accepted.")
-        # Convert loaded data to PyTorch tensors
-        attn_mask,attn_mask_invert = generate_masks_from_embeddings(input_embeddings_data)
+            raise HTTPException(status_code=400, detail="Unsupported file format. Only JSON is accepted.")
+        
+        # Generate the necessary masks
+        attn_mask, attn_mask_invert = generate_masks_from_embeddings(input_embeddings_data)
 
-        input_embeddings_tensor = torch.tensor(input_embeddings_data)
-        input_masks_tensor = torch.tensor(attn_mask)
-        input_mask_invert_tensor = torch.tensor(attn_mask_invert)
+        # Acquire the model and generate text
+        model = get_model()
+        results = generate_text_from_eeg(input_embeddings_data, attn_mask, attn_mask_invert, model)
 
-        model =get_model()
-        # Initialize model
-        # Create a placeholder token
-        # Get predictions using the run_inference_with_masks function
-        results_json = generate_text_from_eeg(input_embeddings_tensor,input_masks_tensor,input_mask_invert_tensor,model)
+        return {"predictions": results}
 
-        return {"predictions": results_json}
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Error decoding JSON.")
+    except AttributeError as ae:
+        raise HTTPException(status_code=500, detail=f"AttributeError: {str(ae)}")
+    except ValueError as ve:
+        raise HTTPException(status_code=500, detail=f"ValueError: {str(ve)}")
+    except TypeError as te:
+        raise HTTPException(status_code=500, detail=f"TypeError: {str(te)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
     except ValueError as ve:
         raise HTTPException(status_code=500, detail=f"ValueError: {str(ve)}")
