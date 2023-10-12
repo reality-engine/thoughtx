@@ -2,6 +2,11 @@
 
 This project provides an API for translating EEG data into text using a trained model. The application is built using FastAPI and can be deployed both locally and within a Docker container.
 
+### Example curl for testing purposes
+
+curl -X POST -F "file=@datasets/saved_data/input_embeddings_1.json" http://127.0.0.1:8000/predict/
+
+
 ### Project Structure
 
 ```
