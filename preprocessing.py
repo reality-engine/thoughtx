@@ -3,6 +3,10 @@ import torch
 from sklearn.preprocessing import StandardScaler
 
 import numpy as np
+from transformers import BartTokenizer
+
+tokenizer = BartTokenizer.from_pretrained('facebook/bart-large')
+
 
 def preprocess_eeg_data_for_inference(raw_eeg_data: np.ndarray, segment: bool = False, segment_length: int = 128) -> np.ndarray:
     """
@@ -56,7 +60,7 @@ def prepare_input_sample_for_inference(eeg_data: np.ndarray, tokenizer, max_len:
 
     return input_sample
 
-def generate_text_from_eeg(input_sample: dict, model, tokenizer, device="cpu") -> str:
+def generate_text_from_eeg(input_embeddings_tensor,input_masks_tensor,input_mask_invert_tensor, model, device="cpu") -> str:
     """
     Generate text from preprocessed EEG data using a trained model.
     
@@ -70,17 +74,19 @@ def generate_text_from_eeg(input_sample: dict, model, tokenizer, device="cpu") -
     - Generated text.
     """
     
-    # Move the sample and model to the specified device
-    input_sample["sent_level_EEG"] = input_sample["sent_level_EEG"].to(device)
-    input_sample["target_ids"] = input_sample["target_ids"].to(device)
-    model = model.to(device)
+    placeholder_token = tokenizer("<s>", return_tensors="pt")
+
     
     # Set the model to evaluation mode
     model.eval()
     
     # Perform inference
     with torch.no_grad():
-        outputs = model(input_ids=None, encoder_outputs=(input_sample["sent_level_EEG"], None), decoder_input_ids=input_sample["target_ids"])
+        try:
+            outputs = model(input_embeddings_tensor, input_masks_tensor, input_mask_invert_tensor, placeholder_token["input_ids"])
+            print("Forward pass successful!")
+        except Exception as e:
+            print(str(e))
     
     # Extract the generated token IDs from the model's outputs
     generated_ids = outputs.logits.argmax(dim=-1)
