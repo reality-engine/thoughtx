@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 # Define the BrainTranslator model
+# Define the BrainTranslator model
 class BrainTranslator(nn.Module):
     def __init__(self, pretrained_layers, in_feature=840, decoder_embedding_size=1024, additional_encoder_nhead=8, additional_encoder_dim_feedforward=2048):
         super(BrainTranslator, self).__init__()

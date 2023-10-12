@@ -79,22 +79,37 @@ def generate_text_from_eeg(input_embeddings_tensor,input_masks_tensor,input_mask
     
     # Set the model to evaluation mode
     model.eval()
-    
+    pred_tokens_list = []
+    pred_string_list =[]
     # Perform inference
     with torch.no_grad():
         try:
-            outputs = model(input_embeddings_tensor, input_masks_tensor, input_mask_invert_tensor, placeholder_token["input_ids"])
             print("Forward pass successful!")
+            outputs = model(input_embeddings_tensor, input_masks_tensor, input_mask_invert_tensor, placeholder_token["input_ids"])
+            # Extract the generated token IDs from the model's outputs
+            logits=outputs.logits
+            probs = logits[0].softmax(dim = 1)
+            values, predictions = probs.topk(1)
+            predictions = torch.squeeze(predictions)
+            predicted_string = tokenizer.decode(predictions).split('</s></s>')[0].replace('<s>','')
+            predictions = predictions.tolist()
+            truncated_prediction = []
+            # Extract the generated token IDs from the model's outputs
+            for t in predictions:
+                        if t != tokenizer.eos_token_id:
+                            truncated_prediction.append(t)
+                        else:
+                            break
+            pred_tokens = tokenizer.convert_ids_to_tokens(truncated_prediction, skip_special_tokens = True)
+            # print('predicted tokens:',pred_tokens)
+            pred_tokens_list.append(pred_tokens)
+            pred_string_list.append(predicted_string)
+            print("Prediction successful:", pred_string_list)
         except Exception as e:
             print(str(e))
     
-    # Extract the generated token IDs from the model's outputs
-    generated_ids = outputs.logits.argmax(dim=-1)
     
-    # Decode the token IDs to text
-    generated_text = tokenizer.decode(generated_ids[0], skip_special_tokens=True)
-    
-    return generated_text
+    return predicted_string
 
 
 def segment_eeg_data(eeg_data: np.ndarray, segment_length: int = 128) -> np.ndarray:

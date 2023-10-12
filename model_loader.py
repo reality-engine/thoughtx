@@ -46,7 +46,6 @@ def get_model():
         except Exception as e:
             raise ValueError(f"Error loading model weights or mismatch between model and weights: {str(e)}")
     
-
     return _MODEL
 
 

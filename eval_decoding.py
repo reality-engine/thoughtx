@@ -43,10 +43,7 @@ def eval_model(dataloaders, device, tokenizer, criterion, model, output_all_resu
             
             target_tokens = tokenizer.convert_ids_to_tokens(target_ids_batch[0].tolist(), skip_special_tokens = True)
             target_string = tokenizer.decode(target_ids_batch[0], skip_special_tokens = True)
-            # print('target ids tensor:',target_ids_batch[0])
-            # print('target ids:',target_ids_batch[0].tolist())
-            # print('target tokens:',target_tokens)
-            # print('target string:',target_string)
+
             f.write(f'target string: {target_string}\n')
 
             # add to list for later calculate bleu metric
@@ -56,9 +53,7 @@ def eval_model(dataloaders, device, tokenizer, criterion, model, output_all_resu
             """replace padding ids in target_ids with -100"""
             target_ids_batch[target_ids_batch == tokenizer.pad_token_id] = -100 
 
-            # target_ids_batch_label = target_ids_batch.clone().detach()
-            # target_ids_batch_label[target_ids_batch_label == tokenizer.pad_token_id] = -100
-
+   
             # forward
             seq2seqLMoutput = model(input_embeddings_batch, input_masks_batch, input_mask_invert_batch, target_ids_batch)
 

@@ -9,23 +9,6 @@ from preprocessing import generate_text_from_eeg
 
 app = FastAPI()
 
-
-
-def load_embeddings_from_file(filepath: str) -> torch.Tensor:
-    """
-    Load embeddings from a given JSON file.
-
-    Parameters:
-    - filepath (str): The path to the JSON file containing embeddings.
-
-    Returns:
-    - torch.Tensor: A tensor containing the loaded embeddings.
-    """
-    with open(filepath, 'r') as file:
-        embeddings_data = json.load(file)
-        print("embeddings_data",embeddings_data.shape)
-    return embeddings_data
-
 # First, let's modify the preprocess_eeg_data function to also create the necessary masks.
 
 def generate_masks_from_embeddings(embeddings: torch.Tensor) -> (torch.Tensor, torch.Tensor):
@@ -71,10 +54,14 @@ async def predict_with_masks(file: UploadFile = UploadFile(...)):
         
         # Generate the necessary masks
         attn_mask, attn_mask_invert = generate_masks_from_embeddings(input_embeddings_data)
+        input_embeddings_tensor = torch.tensor(input_embeddings_data)
+        attn_mask_tensor = torch.tensor(attn_mask)
+        attn_mask_invert_tensor = torch.tensor(attn_mask_invert)
+
 
         # Acquire the model and generate text
         model = get_model()
-        results = generate_text_from_eeg(input_embeddings_data, attn_mask, attn_mask_invert, model)
+        results = generate_text_from_eeg(input_embeddings_tensor, attn_mask_tensor, attn_mask_invert_tensor, model)
 
         return {"predictions": results}
 
@@ -82,13 +69,6 @@ async def predict_with_masks(file: UploadFile = UploadFile(...)):
         raise HTTPException(status_code=400, detail="Error decoding JSON.")
     except AttributeError as ae:
         raise HTTPException(status_code=500, detail=f"AttributeError: {str(ae)}")
-    except ValueError as ve:
-        raise HTTPException(status_code=500, detail=f"ValueError: {str(ve)}")
-    except TypeError as te:
-        raise HTTPException(status_code=500, detail=f"TypeError: {str(te)}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
     except ValueError as ve:
         raise HTTPException(status_code=500, detail=f"ValueError: {str(ve)}")
     except TypeError as te:
