@@ -5,7 +5,7 @@ import json
 import io
 from model_loader import get_model
 
-from preprocessing import preprocess_eeg_data_for_inference,generate_text_from_eeg
+from preprocessing import generate_text_from_eeg
 
 app = FastAPI()
 

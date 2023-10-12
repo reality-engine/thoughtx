@@ -8,6 +8,7 @@ def normalize_1d(input_tensor):
     std = torch.std(input_tensor)
     input_tensor = (input_tensor - mean)/std
     return input_tensor 
+    
 
 def get_input_sample(sent_obj, tokenizer, eeg_type = 'GD', bands = ['_t1','_t2','_a1','_a2','_b1','_b2','_g1','_g2'], max_len = 56, add_CLS_token = False):
     
