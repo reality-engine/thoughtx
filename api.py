@@ -31,7 +31,7 @@ async def predict_with_masks(file: UploadFile = UploadFile(...)):
             model, tokenizer, input_embeddings_data, attn_mask, attn_mask_invert
         )
 
-        return {"predictions": result}
+        return {result}
 
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Error decoding JSON.")
