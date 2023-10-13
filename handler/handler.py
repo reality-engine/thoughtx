@@ -18,8 +18,6 @@ def load_embeddings_from_content(content: str) -> torch.Tensor:
     return torch.tensor(embeddings_data)
 
 
-
-
 async def process_uploaded_file(file: UploadFile) -> torch.Tensor:
     """
     Processes the uploaded file and returns the EEG embeddings.
@@ -32,8 +30,10 @@ async def process_uploaded_file(file: UploadFile) -> torch.Tensor:
     """
     content = await file.read()
     print("File read successful!", content)
-    
-    if file.filename.endswith('.json'):
+
+    if file.filename.endswith(".json"):
         return load_embeddings_from_content(content.decode("utf-8"))
     else:
-        raise HTTPException(status_code=400, detail="Unsupported file format. Only JSON is accepted.")
+        raise HTTPException(
+            status_code=400, detail="Unsupported file format. Only JSON is accepted."
+        )

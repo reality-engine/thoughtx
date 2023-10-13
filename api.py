@@ -1,27 +1,31 @@
 from fastapi import FastAPI, UploadFile, HTTPException
 import pandas as pd
-import torch
 import json
-import io
 from model.model_loader import get_model
 
 from handler.preprocessing import generate_text_from_eeg
 from handler.generate_masks import generate_masks_from_embeddings
 from handler.handler import process_uploaded_file
+
 app = FastAPI()
+
 
 @app.post("/predict/")
 async def predict_with_masks(file: UploadFile = UploadFile(...)):
     try:
         # Process the uploaded EEG data file
         input_embeddings_data = await process_uploaded_file(file)
-        
+
         # Generate the necessary masks
-        attn_mask, attn_mask_invert = generate_masks_from_embeddings(input_embeddings_data)
+        attn_mask, attn_mask_invert = generate_masks_from_embeddings(
+            input_embeddings_data
+        )
 
         # Acquire the model and generate text
         model = get_model()
-        results = generate_text_from_eeg(input_embeddings_data, attn_mask, attn_mask_invert, model)
+        results = generate_text_from_eeg(
+            input_embeddings_data, attn_mask, attn_mask_invert, model
+        )
 
         return {"predictions": results}
 
@@ -35,6 +39,7 @@ async def predict_with_masks(file: UploadFile = UploadFile(...)):
         raise HTTPException(status_code=500, detail=f"TypeError: {str(te)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # The main function remains unchanged
 if __name__ == "__main__":
