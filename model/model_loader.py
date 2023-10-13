@@ -1,5 +1,5 @@
 import torch
-from brain_translator_model import BrainTranslator
+from model.brain_translator_model import BrainTranslator
 from transformers import BartForConditionalGeneration
 
 from google.cloud import storage

@@ -3,9 +3,9 @@ import pandas as pd
 import torch
 import json
 import io
-from model_loader import get_model
+from model.model_loader import get_model
 
-from preprocessing import generate_text_from_eeg
+from handler.preprocessing import generate_text_from_eeg
 
 app = FastAPI()
 
