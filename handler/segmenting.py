@@ -47,3 +47,35 @@
 #     }
 
 #     return input_sample
+
+
+# def preprocess_eeg_data_for_inference(
+#     raw_eeg_data: np.ndarray, segment: bool = False, segment_length: int = 128
+# ) -> np.ndarray:
+#     """
+#     Preprocess raw EEG data for inference.
+
+#     Parameters:
+#     - raw_eeg_data: The raw EEG data.
+#     - segment: Whether to segment the data or not.
+#     - segment_length: The length of each segment if segmentation is chosen.
+
+#     Returns:
+#     - Preprocessed EEG data.
+#     """
+#     # Convert raw data to DataFrame for easier operations
+#     eeg_data_df = pd.DataFrame(raw_eeg_data)
+
+#     # Handle missing values
+#     eeg_data_filled = eeg_data_df.fillna(eeg_data_df.mean())
+
+#     # Normalize the data
+#     scaler = StandardScaler()
+#     normalized_data = scaler.fit_transform(eeg_data_filled)
+
+#     # Segment the data if chosen
+#     if segment:
+#         segmented_data = segment_eeg_data(normalized_data, segment_length)
+#         return segmented_data
+
+#     return normalized_data

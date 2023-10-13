@@ -2,12 +2,15 @@ from fastapi import FastAPI, UploadFile, HTTPException
 import pandas as pd
 import json
 from model.model_loader import get_model
+from transformers import BartTokenizer
 
-from handler.preprocessing import generate_text_from_eeg
+from handler.inference import infer
 from handler.generate_masks import generate_masks_from_embeddings
 from handler.handler import process_uploaded_file
 
 app = FastAPI()
+
+tokenizer = BartTokenizer.from_pretrained("facebook/bart-large")
 
 
 @app.post("/predict/")
@@ -23,11 +26,11 @@ async def predict_with_masks(file: UploadFile = UploadFile(...)):
 
         # Acquire the model and generate text
         model = get_model()
-        results = generate_text_from_eeg(
-            input_embeddings_data, attn_mask, attn_mask_invert, model
-        )
 
-        return {"predictions": results}
+        result = infer(model, tokenizer, input_embeddings_data, attn_mask, attn_mask_invert)
+        
+
+        return {"predictions": result}
 
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Error decoding JSON.")
