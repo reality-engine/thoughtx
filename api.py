@@ -40,28 +40,37 @@ def load_embeddings_from_content(content: str) -> torch.Tensor:
     embeddings_data = json.loads(content)
     return torch.tensor(embeddings_data)
 
+
+async def process_uploaded_file(file: UploadFile) -> torch.Tensor:
+    """
+    Processes the uploaded file and returns the EEG embeddings.
+
+    Parameters:
+    - file (UploadFile): The uploaded file.
+
+    Returns:
+    - torch.Tensor: The EEG embeddings from the file.
+    """
+    content = await file.read()
+    print("File read successful!", content)
+    
+    if file.filename.endswith('.json'):
+        return load_embeddings_from_content(content.decode("utf-8"))
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported file format. Only JSON is accepted.")
+
 @app.post("/predict/")
 async def predict_with_masks(file: UploadFile = UploadFile(...)):
     try:
-        # Read the uploaded EEG data file (same as before)
-        content = await file.read()
-
-        # Check the format of the uploaded file
-        if file.filename.endswith('.json'):
-            input_embeddings_data = load_embeddings_from_content(content.decode("utf-8"))
-        else:
-            raise HTTPException(status_code=400, detail="Unsupported file format. Only JSON is accepted.")
+        # Process the uploaded EEG data file
+        input_embeddings_data = await process_uploaded_file(file)
         
         # Generate the necessary masks
         attn_mask, attn_mask_invert = generate_masks_from_embeddings(input_embeddings_data)
-        input_embeddings_tensor = torch.tensor(input_embeddings_data)
-        attn_mask_tensor = torch.tensor(attn_mask)
-        attn_mask_invert_tensor = torch.tensor(attn_mask_invert)
-
 
         # Acquire the model and generate text
         model = get_model()
-        results = generate_text_from_eeg(input_embeddings_tensor, attn_mask_tensor, attn_mask_invert_tensor, model)
+        results = generate_text_from_eeg(input_embeddings_data, attn_mask, attn_mask_invert, model)
 
         return {"predictions": results}
 

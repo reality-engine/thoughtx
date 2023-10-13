@@ -8,6 +8,7 @@ from transformers import BartTokenizer
 tokenizer = BartTokenizer.from_pretrained('facebook/bart-large')
 
 
+
 def preprocess_eeg_data_for_inference(raw_eeg_data: np.ndarray, segment: bool = False, segment_length: int = 128) -> np.ndarray:
     """
     Preprocess raw EEG data for inference.
@@ -109,7 +110,7 @@ def generate_text_from_eeg(input_embeddings_tensor,input_masks_tensor,input_mask
             print(str(e))
     
     
-    return predicted_string
+    return pred_string_list
 
 
 def segment_eeg_data(eeg_data: np.ndarray, segment_length: int = 128) -> np.ndarray:
