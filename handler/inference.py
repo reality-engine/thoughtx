@@ -1,11 +1,11 @@
 import pandas as pd
 import torch
 from sklearn.preprocessing import StandardScaler
-
+import logging
 import numpy as np
 
 
-def forward_pass(model, embeddings, masks, masks_invert, placeholder_token):
+def forward_pass(model, embeddings, masks, masks_invert, tokenizer):
     """
     Perform a forward pass through the model.
 
@@ -14,12 +14,13 @@ def forward_pass(model, embeddings, masks, masks_invert, placeholder_token):
     - embeddings: The input embeddings tensor.
     - masks: Attention masks tensor.
     - masks_invert: Inverted attention masks tensor.
-    - placeholder_token: Placeholder token tensor for the model.
+    - tokenizer: Tokenizer for the model.
 
     Returns:
     - Model's output.
     """
-    return model(embeddings, masks, masks_invert, placeholder_token["input_ids"])
+    placeholder_token = tokenizer("<s>", return_tensors="pt")["input_ids"]
+    return model(embeddings, masks, masks_invert, placeholder_token)
 
 
 def get_predictions(logits, tokenizer):
@@ -50,11 +51,7 @@ def decode_predictions(predictions, tokenizer):
     Returns:
     - Decoded string from the token predictions.
     """
-    decoded_string = (
-        tokenizer.decode(predictions).split("</s></s>")[0].replace("<s>", "")
-    )
-    truncated_prediction = [t for t in predictions if t != tokenizer.eos_token_id]
-    return decoded_string
+    return tokenizer.decode(predictions).split("</s></s>")[0].replace("<s>", "")
 
 
 def infer(model, tokenizer, embeddings, masks, masks_invert):
@@ -71,14 +68,15 @@ def infer(model, tokenizer, embeddings, masks, masks_invert):
     Returns:
     - Generated text from the model.
     """
+    logging.info("Starting inference...")
     model.eval()
-    placeholder_token = tokenizer("<s>", return_tensors="pt")
+
     with torch.no_grad():
         try:
-            outputs = forward_pass(
-                model, embeddings, masks, masks_invert, placeholder_token
-            )
-            return get_predictions(outputs.logits, tokenizer)
+            outputs = forward_pass(model, embeddings, masks, masks_invert, tokenizer)
+            result = get_predictions(outputs.logits, tokenizer)
+            logging.info(f"Model prediction: {result}")
+            return result
         except Exception as e:
-            print(f"Error during inference: {str(e)}")
+            logging.error(f"Error during inference: {str(e)}")
             return ""

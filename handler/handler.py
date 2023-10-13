@@ -1,6 +1,7 @@
 import torch
 import json
 from fastapi import UploadFile, HTTPException
+import logging
 
 
 # Also, modify the API's predict endpoint to handle the masks
@@ -29,10 +30,14 @@ async def process_uploaded_file(file: UploadFile) -> torch.Tensor:
     - torch.Tensor: The EEG embeddings from the file.
     """
     content = await file.read()
-    print("File read successful!", content)
 
     if file.filename.endswith(".json"):
-        return load_embeddings_from_content(content.decode("utf-8"))
+        embeddings = load_embeddings_from_content(content.decode("utf-8"))
+        if torch.any(embeddings):
+            logging.info("Embeddings loaded successfully from JSON!")
+        else:
+            logging.warning("Loaded embeddings contain only zeros!")
+        return embeddings
     else:
         raise HTTPException(
             status_code=400, detail="Unsupported file format. Only JSON is accepted."

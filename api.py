@@ -27,8 +27,9 @@ async def predict_with_masks(file: UploadFile = UploadFile(...)):
         # Acquire the model and generate text
         model = get_model()
 
-        result = infer(model, tokenizer, input_embeddings_data, attn_mask, attn_mask_invert)
-        
+        result = infer(
+            model, tokenizer, input_embeddings_data, attn_mask, attn_mask_invert
+        )
 
         return {"predictions": result}
 
