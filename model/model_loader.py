@@ -29,26 +29,30 @@ def get_model():
     global _MODEL
 
     if _MODEL is None:
-        logging.info("Loading pretrained BART model...")
+        # Load the pretrained BART model
+        pretrained_bart = BartForConditionalGeneration.from_pretrained(
+            "facebook/bart-large"
+        )
 
-        pretrained_bart = BartForConditionalGeneration.from_pretrained("facebook/bart-large")
-        logging.info("Pretrained BART model loaded successfully!")
-
+        # Use the correct path to your model weights
         checkpoint_path = "/Users/michaelholborn/Documents/SoftwareLocal/monotropism/thoughtx/local_checkpoint/task1_task2_taskNRv2_finetune_BrainTranslator_skipstep1_b1_20_30_5e-05_5e-07_unique_sent.pt"
+
+        # Initialize BrainTranslator with the pretrained BART layers
+
         try:
             _MODEL = BrainTranslator(pretrained_bart)
-            logging.info("BrainTranslator initialized successfully!")
         except Exception as e:
-            logging.error(f"Error initializing BrainTranslator: {str(e)}")
-            raise
-
+            raise ValueError(f"Error initializing BrainTranslator: {str(e)}")
         try:
-            model_weights = torch.load(checkpoint_path, map_location=torch.device("cpu"))
+            model_weights = torch.load(
+                checkpoint_path, map_location=torch.device("cpu")
+            )
             _MODEL.load_state_dict(model_weights)
             _MODEL.eval()
-            logging.info("Model weights loaded successfully!")
+
         except Exception as e:
-            logging.error(f"Error loading model weights or mismatch between model and weights: {str(e)}")
-            raise
+            raise ValueError(
+                f"Error loading model weights or mismatch between model and weights: {str(e)}"
+            )
 
     return _MODEL

@@ -24,31 +24,20 @@ def eval_model(dataloaders, device, tokenizer, criterion, model, output_all_resu
     # modified from: https://pytorch.org/tutorials/beginner/transfer_learning_tutorial.html
 
     model.eval()   # Set model to evaluate mode
-    running_loss = 0.0
-
-    # Iterate over data.
-    sample_count = 0
-    
-    target_tokens_list = []
-    target_string_list = []
+  
     pred_tokens_list = []
     pred_string_list = []
     with open(output_all_results_path,'w') as f:
         for input_embeddings, seq_len, input_masks, input_mask_invert, target_ids, target_mask, sentiment_labels, sent_level_EEG in dataloaders['test']:
             # load in batch
+
+
+
             input_embeddings_batch = input_embeddings.to(device).float()
             input_masks_batch = input_masks.to(device)
             target_ids_batch = target_ids.to(device)
             input_mask_invert_batch = input_mask_invert.to(device)
             
-            target_tokens = tokenizer.convert_ids_to_tokens(target_ids_batch[0].tolist(), skip_special_tokens = True)
-            target_string = tokenizer.decode(target_ids_batch[0], skip_special_tokens = True)
-
-            f.write(f'target string: {target_string}\n')
-
-            # add to list for later calculate bleu metric
-            target_tokens_list.append([target_tokens])
-            target_string_list.append(target_string)
             
             """replace padding ids in target_ids with -100"""
             target_ids_batch[target_ids_batch == tokenizer.pad_token_id] = -100 
@@ -57,29 +46,23 @@ def eval_model(dataloaders, device, tokenizer, criterion, model, output_all_resu
             # forward
             seq2seqLMoutput = model(input_embeddings_batch, input_masks_batch, input_mask_invert_batch, target_ids_batch)
 
-            """calculate loss"""
-            # logits = seq2seqLMoutput.logits # 8*48*50265
-            # logits = logits.permute(0,2,1) # 8*50265*48
 
-            # loss = criterion(logits, target_ids_batch_label) # calculate cross entropy loss only on encoded target parts
-            # NOTE: my criterion not used
-            loss = seq2seqLMoutput.loss # use the BART language modeling loss
-
-
+           
             # get predicted tokens
-            # print('target size:', target_ids_batch.size(), ',original logits size:', logits.size())
             logits = seq2seqLMoutput.logits # 8*48*50265
-            # logits = logits.permute(0,2,1)
-            # print('permuted logits size:', logits.size())
+
+
             probs = logits[0].softmax(dim = 1)
-            # print('probs size:', probs.size())
+
+
             values, predictions = probs.topk(1)
-            # print('predictions before squeeze:',predictions.size())
+
+
             predictions = torch.squeeze(predictions)
+
             predicted_string = tokenizer.decode(predictions).split('</s></s>')[0].replace('<s>','')
             # print('predicted string:',predicted_string)
             f.write(f'predicted string: {predicted_string}\n')
-            f.write(f'################################################\n\n\n')
 
             # convert to int list
             predictions = predictions.tolist()
@@ -93,31 +76,8 @@ def eval_model(dataloaders, device, tokenizer, criterion, model, output_all_resu
             # print('predicted tokens:',pred_tokens)
             pred_tokens_list.append(pred_tokens)
             pred_string_list.append(predicted_string)
-            # print('################################################')
-            # print()
+           
 
-            sample_count += 1
-            # statistics
-            running_loss += loss.item() * input_embeddings_batch.size()[0] # batch loss
-            # print('[DEBUG]loss:',loss.item())
-            # print('#################################')
-
-
-    epoch_loss = running_loss / dataset_sizes['test_set']
-    print('test loss: {:4f}'.format(epoch_loss))
-
-    """ calculate corpus bleu score """
-    weights_list = [(1.0,),(0.5,0.5),(1./3.,1./3.,1./3.),(0.25,0.25,0.25,0.25)]
-    for weight in weights_list:
-        # print('weight:',weight)
-        corpus_bleu_score = corpus_bleu(target_tokens_list, pred_tokens_list, weights = weight)
-        print(f'corpus BLEU-{len(list(weight))} score:', corpus_bleu_score)
-
-    print()
-    """ calculate rouge score """
-    rouge = Rouge()
-    rouge_scores = rouge.get_scores(pred_string_list,target_string_list, avg = True)
-    print(rouge_scores)
 
 
 if __name__ == '__main__': 
@@ -164,29 +124,20 @@ if __name__ == '__main__':
 
 
     ''' set up dataloader '''
-    whole_dataset_dicts = []
-    if 'task1' in task_name:
-        dataset_path_task1 = './dataset/ZuCo/task1-SR/pickle/task1-SR-dataset.pickle' 
-        with open(dataset_path_task1, 'rb') as handle:
-            whole_dataset_dicts.append(pickle.load(handle))
-    if 'task2' in task_name:
-        dataset_path_task2 = './dataset/ZuCo/task2-NR/pickle/task2-NR-dataset.pickle' 
-        with open(dataset_path_task2, 'rb') as handle:
-            whole_dataset_dicts.append(pickle.load(handle))
-    if 'task3' in task_name:
-        dataset_path_task3 = './dataset/ZuCo/task3-TSR/pickle/task3-TSR-dataset.pickle' 
-        with open(dataset_path_task3, 'rb') as handle:
-            whole_dataset_dicts.append(pickle.load(handle))
-    if 'taskNRv2' in task_name:
-        dataset_path_taskNRv2 = './dataset/ZuCo/task2-NR-2.0/pickle/task2-NR-2.0-dataset.pickle' 
-        with open(dataset_path_taskNRv2, 'rb') as handle:
-            whole_dataset_dicts.append(pickle.load(handle))
+    whole_dataset_dicts = dataloader.load_datasets()
+   
     print()
     
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-large')
 
     # test dataset
-    test_set = ZuCo_dataset(whole_dataset_dicts, 'test', tokenizer, subject = subject_choice, eeg_type = eeg_type_choice, bands = bands_choice, setting = dataset_setting)
+    test_set = ZuCo_dataset(whole_dataset_dicts,
+                             'test',
+                               tokenizer, 
+                               subject = subject_choice,
+                                 eeg_type = eeg_type_choice,
+                                   bands = bands_choice, 
+                                   setting = dataset_setting)
 
     dataset_sizes = {"test_set":len(test_set)}
     print('[INFO]test_set size: ', len(test_set))
@@ -200,11 +151,12 @@ if __name__ == '__main__':
     checkpoint_path = args['checkpoint_path']
     pretrained_bart = BartForConditionalGeneration.from_pretrained('facebook/bart-large')
     
-    if model_name == 'BrainTranslator':
-        model = BrainTranslator(pretrained_bart, in_feature = 105*len(bands_choice), decoder_embedding_size = 1024, additional_encoder_nhead=8, additional_encoder_dim_feedforward = 2048)
-    elif model_name == 'BrainTranslatorNaive':
-        model = BrainTranslatorNaive(pretrained_bart, in_feature = 105*len(bands_choice), decoder_embedding_size = 1024, additional_encoder_nhead=8, additional_encoder_dim_feedforward = 2048)
-
+    model = BrainTranslator(pretrained_bart,
+                             in_feature = 105*len(bands_choice),
+                               decoder_embedding_size = 1024,
+                                 additional_encoder_nhead=8,
+                                   additional_encoder_dim_feedforward = 2048)
+   
     model.load_state_dict(torch.load(checkpoint_path))
     model.to(device)
     

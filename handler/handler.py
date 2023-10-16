@@ -3,7 +3,6 @@ import json
 from fastapi import UploadFile, HTTPException
 import logging
 
-
 # Also, modify the API's predict endpoint to handle the masks
 def load_embeddings_from_content(content: str) -> torch.Tensor:
     """
@@ -17,7 +16,6 @@ def load_embeddings_from_content(content: str) -> torch.Tensor:
     """
     embeddings_data = json.loads(content)
     return torch.tensor(embeddings_data)
-
 
 async def process_uploaded_file(file: UploadFile) -> torch.Tensor:
     """
