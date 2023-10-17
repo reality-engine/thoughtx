@@ -2,9 +2,6 @@ from transformers import BartTokenizer, BartForConditionalGeneration
 import torch.nn as nn
 import torch.nn.functional as F
 
-
-# Define the BrainTranslator model
-# Define the BrainTranslator model
 class BrainTranslator(nn.Module):
     def __init__(
         self,
