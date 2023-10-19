@@ -20,6 +20,30 @@ from nltk.translate.bleu_score import sentence_bleu, corpus_bleu
 from rouge import Rouge
 from config import get_config
 
+
+def tensor_to_list(obj):
+    """Recursively convert tensor objects to lists."""
+    if isinstance(obj, torch.Tensor):
+        return obj.tolist()
+    elif isinstance(obj, dict):
+        return {key: tensor_to_list(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [tensor_to_list(item) for item in obj]
+    elif isinstance(obj, tuple):
+        return tuple(tensor_to_list(item) for item in obj)
+    else:
+        return obj
+
+def save_to_json(data, filename):
+    """Save data to a json file."""
+    with open(filename, 'w') as outfile:
+        # Convert all tensors to lists
+        data = tensor_to_list(data)
+        json.dump(data, outfile)
+
+
+
+
 def eval_model(dataloaders, device, tokenizer, criterion, model, output_all_results_path = './results/temp.txt' ):
     # modified from: https://pytorch.org/tutorials/beginner/transfer_learning_tutorial.html
 

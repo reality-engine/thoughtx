@@ -68,6 +68,7 @@ def eval_model(dataloaders, device, tokenizer, criterion, model, output_all_resu
             # print('predicted tokens:',pred_tokens)
             pred_tokens_list.append(pred_tokens)
             pred_string_list.append(predicted_string)
+        return pred_string_list
 
 # def evaluate_model(dataloaders, model, device, tokenizer, output_path='./results/temp.txt'):
 #     """
