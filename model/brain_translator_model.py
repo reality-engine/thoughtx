@@ -32,6 +32,9 @@ class BrainTranslator(nn.Module):
         input_mask_invert,
         decoder_input_ids,
     ):
+        # Print the shape of input_masks_batch
+        print(f"Shape of input_masks_batch inside BrainTranslator: {input_masks_batch.shape}")
+        
         encoded_embedding = self.additional_encoder(
             input_embeddings_batch, src_key_padding_mask=input_mask_invert
         )
