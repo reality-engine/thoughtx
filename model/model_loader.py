@@ -35,7 +35,7 @@ def get_model():
         )
 
         # Use the correct path to your model weights
-        checkpoint_path = "/Users/michaelholborn/Documents/SoftwareLocal/monotropism/thoughtx/local_checkpoint/task1_task2_taskNRv2_finetune_BrainTranslator_skipstep1_b1_20_30_5e-05_5e-07_unique_sent.pt"
+        checkpoint_path = "../local_checkpoint/task1_task2_taskNRv2_finetune_BrainTranslator_skipstep1_b1_20_30_5e-05_5e-07_unique_sent.pt"
 
         # Initialize BrainTranslator with the pretrained BART layers
 
@@ -45,7 +45,7 @@ def get_model():
             raise ValueError(f"Error initializing BrainTranslator: {str(e)}")
         try:
             model_weights = torch.load(
-                checkpoint_path, map_location=torch.device("cpu")
+                checkpoint_path, map_location=torch.device("gpu" if torch.cuda.is_available() else "cpu")
             )
             _MODEL.load_state_dict(model_weights)
             _MODEL.eval()
